@@ -1,0 +1,203 @@
+@page "/orders"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject ICurrencyService CurrencyService
+@inject IToastService ToastService
+@inject NavigationManager NavigationManager
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="sm:flex sm:items-center">
+        <div class="sm:flex-auto">
+            <h1 class="text-2xl font-bold text-gray-900">My Orders</h1>
+            <p class="mt-2 text-sm text-gray-700">View and track all your orders in one place.</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <LoadingSpinner IsLoading="true" Message="Loading orders..." />
+    }
+    else if (!orders.Any())
+    {
+        <div class="text-center py-12">
+            <div class="rounded-full bg-gray-100 h-24 w-24 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-shopping-bag text-4xl text-gray-400"></i>
+            </div>
+            <h2 class="text-lg font-medium text-gray-900 mb-2">No Orders Yet</h2>
+            <p class="text-gray-500 mb-6">Start shopping to create your first order.</p>
+            <a href="/products" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                Browse Products
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="mt-8 flex flex-col">
+            <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                <div class="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+                    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-300">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Order Number</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Date</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
+                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total</th>
+                                    <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                                        <span class="sr-only">Actions</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                @foreach (var order in orders)
+                                {
+                                    <tr>
+                                        <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                                            @order.OrderNumber
+                                        </td>
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                            @order.CreatedAt.ToLocalTime().ToString("MMM dd, yyyy HH:mm")
+                                        </td>
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                            <span class="@GetStatusClass(order.Status)">
+                                                @order.Status
+                                            </span>
+                                        </td>
+                                        <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                            @FormatPrice(order.Total)
+                                        </td>
+                                        <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                            <button @onclick="() => ViewOrderDetails(order.Id)" 
+                                                    class="text-indigo-600 hover:text-indigo-900">
+                                                View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="mt-4 flex justify-center">
+                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button @onclick="PreviousPage" 
+                            disabled="@(currentPage == 1)"
+                            class="@(currentPage == 1 ? "opacity-50 cursor-not-allowed" : "") relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    @for (int i = 1; i <= totalPages; i++)
+                    {
+                        var pageNumber = i;
+                        <button @onclick="() => GoToPage(pageNumber)"
+                                class="@(pageNumber == currentPage ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600" : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50") relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                            @pageNumber
+                        </button>
+                    }
+                    <button @onclick="NextPage" 
+                            disabled="@(currentPage == totalPages)"
+                            class="@(currentPage == totalPages ? "opacity-50 cursor-not-allowed" : "") relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </nav>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private List<Order> orders = new();
+    private Currency? currentCurrency;
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentCurrency = await CurrencyService.GetCurrentCurrency();
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        try
+        {
+            var response = await Http.GetAsync($"api/orders?page={currentPage}&pageSize={pageSize}");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<PagedResponse<Order>>();
+                if (result != null)
+                {
+                    orders = result.Items.ToList();
+                    totalPages = result.TotalPages;
+                }
+            }
+            else
+            {
+                ToastService.ShowError("Failed to load orders");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("An unexpected error occurred");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetStatusClass(OrderStatus status)
+    {
+        var baseClass = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
+        return status switch
+        {
+            OrderStatus.Pending => $"{baseClass} bg-yellow-100 text-yellow-800",
+            OrderStatus.Processing => $"{baseClass} bg-blue-100 text-blue-800",
+            OrderStatus.Shipped => $"{baseClass} bg-indigo-100 text-indigo-800",
+            OrderStatus.Delivered => $"{baseClass} bg-green-100 text-green-800",
+            OrderStatus.Cancelled => $"{baseClass} bg-red-100 text-red-800",
+            OrderStatus.Refunded => $"{baseClass} bg-gray-100 text-gray-800",
+            _ => $"{baseClass} bg-gray-100 text-gray-800"
+        };
+    }
+
+    private string FormatPrice(decimal price)
+    {
+        return CurrencyService.FormatPrice(price, currentCurrency);
+    }
+
+    private void ViewOrderDetails(int orderId)
+    {
+        NavigationManager.NavigateTo($"/order-confirmation/{orderId}");
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadOrders();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadOrders();
+        }
+    }
+
+    private async Task GoToPage(int page)
+    {
+        currentPage = page;
+        await LoadOrders();
+    }
+}
