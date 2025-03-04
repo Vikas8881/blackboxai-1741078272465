@@ -1,0 +1,180 @@
+@page "/register"
+@inject IAuthService AuthService
+@inject IToastService ToastService
+@inject NavigationManager NavigationManager
+
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                Create your account
+            </h2>
+            <p class="mt-2 text-center text-sm text-gray-600">
+                Already have an account?
+                <a href="login" class="font-medium text-indigo-600 hover:text-indigo-500">
+                    Sign in
+                </a>
+            </p>
+        </div>
+
+        <EditForm Model="@registerModel" OnValidSubmit="HandleRegister" class="mt-8 space-y-6">
+            <DataAnnotationsValidator />
+
+            <div class="rounded-md shadow-sm space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="firstName" class="block text-sm font-medium text-gray-700">First Name</label>
+                        <InputText id="firstName" 
+                                  @bind-Value="registerModel.FirstName"
+                                  class="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                  placeholder="John" />
+                        <ValidationMessage For="@(() => registerModel.FirstName)" class="text-red-500 text-sm mt-1" />
+                    </div>
+                    <div>
+                        <label for="lastName" class="block text-sm font-medium text-gray-700">Last Name</label>
+                        <InputText id="lastName" 
+                                  @bind-Value="registerModel.LastName"
+                                  class="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                  placeholder="Doe" />
+                        <ValidationMessage For="@(() => registerModel.LastName)" class="text-red-500 text-sm mt-1" />
+                    </div>
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+                    <InputText id="email" 
+                              type="email"
+                              @bind-Value="registerModel.Email"
+                              class="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                              placeholder="you@example.com" />
+                    <ValidationMessage For="@(() => registerModel.Email)" class="text-red-500 text-sm mt-1" />
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <InputText type="password" 
+                              id="password" 
+                              @bind-Value="registerModel.Password"
+                              class="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                              placeholder="••••••••" />
+                    <ValidationMessage For="@(() => registerModel.Password)" class="text-red-500 text-sm mt-1" />
+                    <p class="mt-1 text-xs text-gray-500">
+                        Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.
+                    </p>
+                </div>
+
+                <div>
+                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <InputText type="password" 
+                              id="confirmPassword" 
+                              @bind-Value="registerModel.ConfirmPassword"
+                              class="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                              placeholder="••••••••" />
+                    <ValidationMessage For="@(() => registerModel.ConfirmPassword)" class="text-red-500 text-sm mt-1" />
+                </div>
+
+                <div class="flex items-center">
+                    <InputCheckbox id="isReseller" 
+                                 @bind-Value="registerModel.IsReseller"
+                                 class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+                    <label for="isReseller" class="ml-2 block text-sm text-gray-900">
+                        Register as a Reseller
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <button type="submit" 
+                        disabled="@isLoading"
+                        class="@(isLoading ? "opacity-75 cursor-not-allowed" : "") group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    @if (isLoading)
+                    {
+                        <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                            <div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                        </span>
+                        <span>Creating account...</span>
+                    }
+                    else
+                    {
+                        <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                            <i class="fas fa-user-plus"></i>
+                        </span>
+                        <span>Create Account</span>
+                    }
+                </button>
+            </div>
+        </EditForm>
+
+        <div class="mt-6">
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-300"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-gray-50 text-gray-500">
+                        Or continue with
+                    </span>
+                </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-2 gap-3">
+                <button type="button" 
+                        @onclick="SignUpWithGoogle"
+                        class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <i class="fab fa-google text-red-500 mr-2"></i>
+                    Google
+                </button>
+                <button type="button"
+                        @onclick="SignUpWithFacebook" 
+                        class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                    <i class="fab fa-facebook text-blue-500 mr-2"></i>
+                    Facebook
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterRequest registerModel = new();
+    private bool isLoading;
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            isLoading = true;
+            var result = await AuthService.Register(registerModel);
+
+            if (result.Success)
+            {
+                ToastService.ShowSuccess(result.Message);
+                NavigationManager.NavigateTo("/login");
+            }
+            else
+            {
+                ToastService.ShowError(result.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("An unexpected error occurred");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SignUpWithGoogle()
+    {
+        // TODO: Implement Google sign-up
+        ToastService.ShowInfo("Google sign-up coming soon");
+    }
+
+    private void SignUpWithFacebook()
+    {
+        // TODO: Implement Facebook sign-up
+        ToastService.ShowInfo("Facebook sign-up coming soon");
+    }
+}
