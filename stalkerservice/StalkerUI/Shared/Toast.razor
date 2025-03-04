@@ -1,0 +1,173 @@
+<div class="fixed bottom-4 right-4 z-50">
+    @foreach (var toast in _toasts)
+    {
+        <div class="@GetToastClass(toast) mb-2 p-4 rounded-lg shadow-lg max-w-md transform transition-all duration-300 @(toast.IsVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0")"
+             role="alert">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    @switch (toast.Type)
+                    {
+                        case ToastType.Success:
+                            <i class="fas fa-check-circle text-green-400 text-xl"></i>
+                            break;
+                        case ToastType.Error:
+                            <i class="fas fa-exclamation-circle text-red-400 text-xl"></i>
+                            break;
+                        case ToastType.Warning:
+                            <i class="fas fa-exclamation-triangle text-yellow-400 text-xl"></i>
+                            break;
+                        case ToastType.Info:
+                            <i class="fas fa-info-circle text-blue-400 text-xl"></i>
+                            break;
+                    }
+                </div>
+                <div class="ml-3">
+                    @if (!string.IsNullOrEmpty(toast.Title))
+                    {
+                        <h3 class="text-sm font-medium @GetTextColorClass(toast)">
+                            @toast.Title
+                        </h3>
+                    }
+                    <div class="text-sm @GetTextColorClass(toast)">
+                        @toast.Message
+                    </div>
+                </div>
+                <div class="ml-auto pl-3">
+                    <div class="-mx-1.5 -my-1.5">
+                        <button @onclick="() => RemoveToast(toast)" 
+                                class="inline-flex rounded-md p-1.5 @GetCloseButtonClass(toast) focus:outline-none focus:ring-2 focus:ring-offset-2 @GetRingColorClass(toast)">
+                            <span class="sr-only">Dismiss</span>
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            @if (toast.ShowProgressBar)
+            {
+                <div class="mt-2 w-full bg-gray-200 rounded-full h-1">
+                    <div class="@GetProgressBarClass(toast) h-1 rounded-full transition-all duration-300"
+                         style="width: @(toast.Progress)%"></div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ToastMessage> _toasts = new();
+    private const int DefaultDuration = 5000;
+
+    public void ShowToast(string message, ToastType type = ToastType.Info, string? title = null, int duration = DefaultDuration)
+    {
+        var toast = new ToastMessage
+        {
+            Id = Guid.NewGuid(),
+            Message = message,
+            Title = title,
+            Type = type,
+            IsVisible = true,
+            ShowProgressBar = true,
+            Progress = 100
+        };
+
+        _toasts.Add(toast);
+        StateHasChanged();
+
+        // Start progress bar animation
+        var timer = new System.Timers.Timer(50);
+        var elapsed = 0;
+        timer.Elapsed += (sender, e) =>
+        {
+            elapsed += 50;
+            toast.Progress = Math.Max(0, 100 - (elapsed * 100 / duration));
+
+            if (elapsed >= duration)
+            {
+                timer.Stop();
+                RemoveToast(toast);
+            }
+            else
+            {
+                InvokeAsync(StateHasChanged);
+            }
+        };
+        timer.Start();
+    }
+
+    private void RemoveToast(ToastMessage toast)
+    {
+        toast.IsVisible = false;
+        StateHasChanged();
+
+        // Remove after animation
+        Task.Delay(300).ContinueWith(_ =>
+        {
+            _toasts.Remove(toast);
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    private string GetToastClass(ToastMessage toast) => toast.Type switch
+    {
+        ToastType.Success => "bg-green-50 border-l-4 border-green-400",
+        ToastType.Error => "bg-red-50 border-l-4 border-red-400",
+        ToastType.Warning => "bg-yellow-50 border-l-4 border-yellow-400",
+        ToastType.Info => "bg-blue-50 border-l-4 border-blue-400",
+        _ => "bg-gray-50 border-l-4 border-gray-400"
+    };
+
+    private string GetTextColorClass(ToastMessage toast) => toast.Type switch
+    {
+        ToastType.Success => "text-green-800",
+        ToastType.Error => "text-red-800",
+        ToastType.Warning => "text-yellow-800",
+        ToastType.Info => "text-blue-800",
+        _ => "text-gray-800"
+    };
+
+    private string GetCloseButtonClass(ToastMessage toast) => toast.Type switch
+    {
+        ToastType.Success => "text-green-400 hover:bg-green-100",
+        ToastType.Error => "text-red-400 hover:bg-red-100",
+        ToastType.Warning => "text-yellow-400 hover:bg-yellow-100",
+        ToastType.Info => "text-blue-400 hover:bg-blue-100",
+        _ => "text-gray-400 hover:bg-gray-100"
+    };
+
+    private string GetRingColorClass(ToastMessage toast) => toast.Type switch
+    {
+        ToastType.Success => "focus:ring-green-400 focus:ring-offset-green-50",
+        ToastType.Error => "focus:ring-red-400 focus:ring-offset-red-50",
+        ToastType.Warning => "focus:ring-yellow-400 focus:ring-offset-yellow-50",
+        ToastType.Info => "focus:ring-blue-400 focus:ring-offset-blue-50",
+        _ => "focus:ring-gray-400 focus:ring-offset-gray-50"
+    };
+
+    private string GetProgressBarClass(ToastMessage toast) => toast.Type switch
+    {
+        ToastType.Success => "bg-green-400",
+        ToastType.Error => "bg-red-400",
+        ToastType.Warning => "bg-yellow-400",
+        ToastType.Info => "bg-blue-400",
+        _ => "bg-gray-400"
+    };
+}
+
+public class ToastMessage
+{
+    public Guid Id { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public string? Title { get; set; }
+    public ToastType Type { get; set; }
+    public bool IsVisible { get; set; }
+    public bool ShowProgressBar { get; set; }
+    public double Progress { get; set; }
+}
+
+public enum ToastType
+{
+    Success,
+    Error,
+    Warning,
+    Info
+}
