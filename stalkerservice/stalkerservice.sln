@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StalkerApi", "StalkerApi\StalkerApi.csproj", "{8FF3666B-B9FA-472F-9007-CB4B37F41A9A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StalkerModels", "StalkerModels\StalkerModels.csproj", "{B564541B-9577-4077-BA4A-981D33B4FE99}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StalkerUI", "StalkerUI\StalkerUI.csproj", "{18F457BE-350F-4132-8BAE-CB5164E56CAC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8FF3666B-B9FA-472F-9007-CB4B37F41A9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FF3666B-B9FA-472F-9007-CB4B37F41A9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FF3666B-B9FA-472F-9007-CB4B37F41A9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FF3666B-B9FA-472F-9007-CB4B37F41A9A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B564541B-9577-4077-BA4A-981D33B4FE99}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B564541B-9577-4077-BA4A-981D33B4FE99}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B564541B-9577-4077-BA4A-981D33B4FE99}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B564541B-9577-4077-BA4A-981D33B4FE99}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18F457BE-350F-4132-8BAE-CB5164E56CAC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18F457BE-350F-4132-8BAE-CB5164E56CAC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18F457BE-350F-4132-8BAE-CB5164E56CAC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18F457BE-350F-4132-8BAE-CB5164E56CAC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
