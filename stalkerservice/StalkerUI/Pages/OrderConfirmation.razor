@@ -1,0 +1,202 @@
+@page "/order-confirmation/{OrderId:int}"
+@inject HttpClient Http
+@inject ICurrencyService CurrencyService
+@inject NavigationManager NavigationManager
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    @if (isLoading)
+    {
+        <LoadingSpinner IsLoading="true" Message="Loading order details..." />
+    }
+    else if (order == null)
+    {
+        <div class="text-center py-12">
+            <div class="rounded-full bg-red-100 h-24 w-24 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-circle text-4xl text-red-600"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h2>
+            <p class="text-gray-500 mb-6">We couldn't find the order you're looking for.</p>
+            <a href="/" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                Return Home
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="text-center mb-8">
+                    <div class="rounded-full bg-green-100 h-24 w-24 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check text-4xl text-green-600"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Order Confirmed!</h2>
+                    <p class="text-gray-500">Thank you for your order. We'll send you a confirmation email shortly.</p>
+                </div>
+
+                <div class="border-t border-b border-gray-200 py-6">
+                    <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Order Number</dt>
+                            <dd class="mt-1 text-sm text-gray-900">@order.OrderNumber</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Order Date</dt>
+                            <dd class="mt-1 text-sm text-gray-900">@order.CreatedAt.ToLocalTime().ToString("MMMM dd, yyyy HH:mm")</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Order Status</dt>
+                            <dd class="mt-1">
+                                <span class="@GetStatusClass()">@order.Status</span>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Payment Status</dt>
+                            <dd class="mt-1">
+                                <span class="@GetPaymentStatusClass()">@order.PaymentStatus</span>
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Order Items</h3>
+                    <div class="flow-root">
+                        <ul role="list" class="-my-6 divide-y divide-gray-200">
+                            @foreach (var item in order.Items)
+                            {
+                                <li class="py-6 flex">
+                                    <div class="flex-1 flex items-center">
+                                        <h4 class="font-medium text-gray-900">@item.ProductName</h4>
+                                        <div class="ml-4 flex-1 flex items-center justify-between">
+                                            <div class="text-sm text-gray-500">
+                                                Qty: @item.Quantity x @FormatPrice(item.UnitPrice)
+                                            </div>
+                                            <div class="text-sm font-medium text-gray-900">
+                                                @FormatPrice(item.Total)
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Shipping Information</h3>
+                    <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Name</dt>
+                            <dd class="mt-1 text-sm text-gray-900">@order.ShippingName</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Phone</dt>
+                            <dd class="mt-1 text-sm text-gray-900">@order.ShippingPhone</dd>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <dt class="text-sm font-medium text-gray-500">Address</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                @order.ShippingAddress<br />
+                                @order.ShippingCity, @order.ShippingState @order.ShippingPostalCode
+                            </dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="mt-6">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">Order Summary</h3>
+                    <dl class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <dt class="text-gray-500">Subtotal</dt>
+                            <dd class="text-gray-900">@FormatPrice(order.SubTotal)</dd>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <dt class="text-gray-500">Shipping</dt>
+                            <dd class="text-gray-900">@FormatPrice(order.ShippingCost)</dd>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <dt class="text-gray-500">Tax</dt>
+                            <dd class="text-gray-900">@FormatPrice(order.Tax)</dd>
+                        </div>
+                        <div class="flex justify-between text-base font-medium">
+                            <dt class="text-gray-900">Total</dt>
+                            <dd class="text-gray-900">@FormatPrice(order.Total)</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="mt-8 flex justify-center space-x-4">
+                    <a href="/" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                        Continue Shopping
+                    </a>
+                    <a href="/orders" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        View All Orders
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int OrderId { get; set; }
+
+    private bool isLoading = true;
+    private Order? order;
+    private Currency? currentCurrency;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentCurrency = await CurrencyService.GetCurrentCurrency();
+            var response = await Http.GetAsync($"api/orders/{OrderId}");
+            if (response.IsSuccessStatusCode)
+            {
+                order = await response.Content.ReadFromJsonAsync<Order>();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetStatusClass()
+    {
+        var baseClass = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
+        return order?.Status switch
+        {
+            OrderStatus.Pending => $"{baseClass} bg-yellow-100 text-yellow-800",
+            OrderStatus.Processing => $"{baseClass} bg-blue-100 text-blue-800",
+            OrderStatus.Shipped => $"{baseClass} bg-indigo-100 text-indigo-800",
+            OrderStatus.Delivered => $"{baseClass} bg-green-100 text-green-800",
+            OrderStatus.Cancelled => $"{baseClass} bg-red-100 text-red-800",
+            OrderStatus.Refunded => $"{baseClass} bg-gray-100 text-gray-800",
+            _ => $"{baseClass} bg-gray-100 text-gray-800"
+        };
+    }
+
+    private string GetPaymentStatusClass()
+    {
+        var baseClass = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium";
+        return order?.PaymentStatus switch
+        {
+            PaymentStatus.Pending => $"{baseClass} bg-yellow-100 text-yellow-800",
+            PaymentStatus.Completed => $"{baseClass} bg-green-100 text-green-800",
+            PaymentStatus.Failed => $"{baseClass} bg-red-100 text-red-800",
+            PaymentStatus.Refunded => $"{baseClass} bg-gray-100 text-gray-800",
+            _ => $"{baseClass} bg-gray-100 text-gray-800"
+        };
+    }
+
+    private string FormatPrice(decimal price)
+    {
+        return CurrencyService.FormatPrice(price, currentCurrency);
+    }
+}
