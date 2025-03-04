@@ -1,0 +1,408 @@
+@page "/products"
+@page "/products/{CategorySlug}"
+@inject HttpClient Http
+@inject ICurrencyService CurrencyService
+@inject ICartService CartService
+@inject IToastService ToastService
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-4 gap-8">
+        <!-- Filters Sidebar -->
+        <div class="col-span-1 space-y-6">
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Categories</h3>
+                <div class="space-y-2">
+                    @foreach (var category in categories)
+                    {
+                        <div class="flex items-center">
+                            <input type="checkbox" 
+                                   id="category-@category.Id" 
+                                   value="@category.Id" 
+                                   checked="@(selectedCategories.Contains(category.Id))"
+                                   @onchange="@(e => ToggleCategory(category.Id))"
+                                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+                            <label for="category-@category.Id" class="ml-2 text-sm text-gray-700">
+                                @category.Name
+                            </label>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Price Range</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-sm text-gray-600">Min Price</label>
+                        <input type="number" 
+                               @bind="minPrice" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600">Max Price</label>
+                        <input type="number" 
+                               @bind="maxPrice" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Sort By</h3>
+                <select @bind="sortBy" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                    <option value="name_asc">Name: A to Z</option>
+                    <option value="name_desc">Name: Z to A</option>
+                    <option value="newest">Newest First</option>
+                </select>
+            </div>
+
+            <button @onclick="ApplyFilters" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors duration-200">
+                Apply Filters
+            </button>
+        </div>
+
+        <!-- Products Grid -->
+        <div class="col-span-3">
+            <!-- Search and View Options -->
+            <div class="flex justify-between items-center mb-6">
+                <div class="relative flex-1 max-w-lg">
+                    <input type="text" 
+                           @bind="searchTerm" 
+                           @bind:event="oninput"
+                           @onkeyup="HandleSearch"
+                           placeholder="Search products..."
+                           class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 pl-10" />
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4 ml-4">
+                    <button @onclick="() => viewMode = ViewMode.Grid" 
+                            class="@(viewMode == ViewMode.Grid ? "text-indigo-600" : "text-gray-400") hover:text-indigo-600">
+                        <i class="fas fa-th-large text-xl"></i>
+                    </button>
+                    <button @onclick="() => viewMode = ViewMode.List" 
+                            class="@(viewMode == ViewMode.List ? "text-indigo-600" : "text-gray-400") hover:text-indigo-600">
+                        <i class="fas fa-list text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            @if (isLoading)
+            {
+                <LoadingSpinner IsLoading="true" Message="Loading products..." />
+            }
+            else if (!products.Any())
+            {
+                <div class="text-center py-12">
+                    <i class="fas fa-box-open text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-500">No products found matching your criteria.</p>
+                </div>
+            }
+            else
+            {
+                @if (viewMode == ViewMode.Grid)
+                {
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        @foreach (var product in products)
+                        {
+                            <div class="group bg-white rounded-lg shadow overflow-hidden">
+                                <div class="relative">
+                                    <img src="@(string.IsNullOrEmpty(product.MainImage) ? "/images/placeholder.png" : product.MainImage)" 
+                                         alt="@product.Name" 
+                                         class="w-full h-48 object-cover transform group-hover:scale-105 transition-transform duration-200"/>
+                                    @if (product.DiscountedPrice.HasValue)
+                                    {
+                                        <div class="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm">
+                                            Sale!
+                                        </div>
+                                    }
+                                </div>
+                                <div class="p-4">
+                                    <h3 class="text-lg font-medium text-gray-900">@product.Name</h3>
+                                    <p class="mt-1 text-sm text-gray-500">@product.Description</p>
+                                    <div class="mt-2 flex items-center">
+                                        @if (product.DiscountedPrice.HasValue)
+                                        {
+                                            <span class="text-lg font-bold text-red-600">@FormatPrice(product.DiscountedPrice.Value)</span>
+                                            <span class="ml-2 text-sm text-gray-500 line-through">@FormatPrice(product.BasePrice)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-lg font-bold text-gray-900">@FormatPrice(product.BasePrice)</span>
+                                        }
+                                    </div>
+                                    <button @onclick="() => AddToCart(product)" class="mt-4 w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors duration-200">
+                                        Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="space-y-4">
+                        @foreach (var product in products)
+                        {
+                            <div class="flex bg-white rounded-lg shadow overflow-hidden">
+                                <img src="@(string.IsNullOrEmpty(product.MainImage) ? "/images/placeholder.png" : product.MainImage)" 
+                                     alt="@product.Name" 
+                                     class="w-48 h-48 object-cover"/>
+                                <div class="flex-1 p-4">
+                                    <div class="flex justify-between">
+                                        <div>
+                                            <h3 class="text-lg font-medium text-gray-900">@product.Name</h3>
+                                            <p class="mt-1 text-sm text-gray-500">@product.Description</p>
+                                        </div>
+                                        <div class="text-right">
+                                            @if (product.DiscountedPrice.HasValue)
+                                            {
+                                                <span class="text-lg font-bold text-red-600">@FormatPrice(product.DiscountedPrice.Value)</span>
+                                                <div class="text-sm text-gray-500 line-through">@FormatPrice(product.BasePrice)</div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-lg font-bold text-gray-900">@FormatPrice(product.BasePrice)</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 flex justify-between items-center">
+                                        <div class="text-sm text-gray-500">
+                                            <span class="mr-4"><i class="fas fa-box mr-1"></i> Stock: @product.StockQuantity</span>
+                                            <span><i class="fas fa-tag mr-1"></i> @product.Category?.Name</span>
+                                        </div>
+                                        <button @onclick="() => AddToCart(product)" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition-colors duration-200">
+                                            Add to Cart
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <!-- Pagination -->
+                <div class="mt-8 flex justify-center">
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button @onclick="PreviousPage" 
+                                disabled="@(currentPage == 1)"
+                                class="@(currentPage == 1 ? "opacity-50 cursor-not-allowed" : "") relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        @for (int i = 1; i <= totalPages; i++)
+                        {
+                            var pageNumber = i;
+                            <button @onclick="() => GoToPage(pageNumber)"
+                                    class="@(pageNumber == currentPage ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600" : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50") relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                                @pageNumber
+                            </button>
+                        }
+                        <button @onclick="NextPage" 
+                                disabled="@(currentPage == totalPages)"
+                                class="@(currentPage == totalPages ? "opacity-50 cursor-not-allowed" : "") relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </nav>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? CategorySlug { get; set; }
+
+    private bool isLoading = true;
+    private List<Category> categories = new();
+    private List<Product> products = new();
+    private HashSet<int> selectedCategories = new();
+    private decimal? minPrice;
+    private decimal? maxPrice;
+    private string sortBy = "newest";
+    private string searchTerm = "";
+    private ViewMode viewMode = ViewMode.Grid;
+    private Currency? currentCurrency;
+    private int currentPage = 1;
+    private int pageSize = 12;
+    private int totalPages = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentCurrency = await CurrencyService.GetCurrentCurrency();
+        await LoadCategories();
+        await LoadProducts();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(CategorySlug))
+        {
+            var category = categories.FirstOrDefault(c => c.Slug == CategorySlug);
+            if (category != null)
+            {
+                selectedCategories.Clear();
+                selectedCategories.Add(category.Id);
+                await LoadProducts();
+            }
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            var response = await Http.GetAsync("api/categories");
+            if (response.IsSuccessStatusCode)
+            {
+                categories = await response.Content.ReadFromJsonAsync<List<Category>>() ?? new();
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Failed to load categories");
+        }
+    }
+
+    private async Task LoadProducts()
+    {
+        try
+        {
+            isLoading = true;
+
+            var queryParams = new List<string>
+            {
+                $"page={currentPage}",
+                $"pageSize={pageSize}",
+                $"sortBy={sortBy}"
+            };
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                queryParams.Add($"search={Uri.EscapeDataString(searchTerm)}");
+            }
+
+            if (selectedCategories.Any())
+            {
+                queryParams.Add($"categories={string.Join(",", selectedCategories)}");
+            }
+
+            if (minPrice.HasValue)
+            {
+                queryParams.Add($"minPrice={minPrice}");
+            }
+
+            if (maxPrice.HasValue)
+            {
+                queryParams.Add($"maxPrice={maxPrice}");
+            }
+
+            var url = $"api/products?{string.Join("&", queryParams)}";
+            var response = await Http.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<PagedResponse<Product>>();
+                if (result != null)
+                {
+                    products = result.Items.ToList();
+                    totalPages = result.TotalPages;
+                    currentPage = result.CurrentPage;
+                }
+            }
+            else
+            {
+                ToastService.ShowError("Failed to load products");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("An unexpected error occurred");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ToggleCategory(int categoryId)
+    {
+        if (selectedCategories.Contains(categoryId))
+            selectedCategories.Remove(categoryId);
+        else
+            selectedCategories.Add(categoryId);
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
+        await LoadProducts();
+    }
+
+    private async Task HandleSearch()
+    {
+        await Task.Delay(300); // Debounce
+        currentPage = 1;
+        await LoadProducts();
+    }
+
+    private async Task AddToCart(Product product)
+    {
+        try
+        {
+            await CartService.AddToCart(product);
+            ToastService.ShowSuccess("Product added to cart");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Failed to add product to cart");
+        }
+    }
+
+    private string FormatPrice(decimal price)
+    {
+        return CurrencyService.FormatPrice(price, currentCurrency);
+    }
+
+    private async Task PreviousPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadProducts();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (currentPage < totalPages)
+        {
+            currentPage++;
+            await LoadProducts();
+        }
+    }
+
+    private async Task GoToPage(int page)
+    {
+        currentPage = page;
+        await LoadProducts();
+    }
+}
+
+public enum ViewMode
+{
+    Grid,
+    List
+}
+
+public class PagedResponse<T>
+{
+    public List<T> Items { get; set; } = new();
+    public int TotalItems { get; set; }
+    public int TotalPages { get; set; }
+    public int CurrentPage { get; set; }
+    public int PageSize { get; set; }
+}
