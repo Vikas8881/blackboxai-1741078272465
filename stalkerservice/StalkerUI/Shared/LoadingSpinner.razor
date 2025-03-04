@@ -1,0 +1,32 @@
+@if (IsLoading)
+{
+    <div class="@WrapperClass">
+        <div class="@SpinnerClass">
+            <div class="animate-spin rounded-full h-@Size w-@Size border-b-2 border-@Color"></div>
+        </div>
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <div class="text-@Color text-sm mt-2">@Message</div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public string Size { get; set; } = "8";
+
+    [Parameter]
+    public string Color { get; set; } = "indigo-600";
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public string WrapperClass { get; set; } = "flex flex-col items-center justify-center";
+
+    [Parameter]
+    public string SpinnerClass { get; set; } = "flex items-center justify-center";
+}
