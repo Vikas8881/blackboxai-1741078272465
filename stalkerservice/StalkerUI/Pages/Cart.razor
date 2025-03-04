@@ -1,0 +1,186 @@
+@page "/cart"
+@inject ICartService CartService
+@inject ICurrencyService CurrencyService
+@inject IToastService ToastService
+@inject NavigationManager NavigationManager
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <h1 class="text-2xl font-bold text-gray-900 mb-8">Shopping Cart</h1>
+
+    @if (isLoading)
+    {
+        <LoadingSpinner IsLoading="true" Message="Loading cart..." />
+    }
+    else if (!cartItems.Any())
+    {
+        <div class="text-center py-12">
+            <i class="fas fa-shopping-cart text-4xl text-gray-400 mb-4"></i>
+            <p class="text-gray-500 mb-4">Your cart is empty</p>
+            <a href="/products" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                Continue Shopping
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="flow-root">
+                    <ul role="list" class="-my-6 divide-y divide-gray-200">
+                        @foreach (var item in cartItems)
+                        {
+                            <li class="py-6 flex">
+                                <div class="flex-shrink-0 w-24 h-24 border border-gray-200 rounded-md overflow-hidden">
+                                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                    {
+                                        <img src="@item.ImageUrl" alt="@item.Name" class="w-full h-full object-center object-cover">
+                                    }
+                                    else
+                                    {
+                                        <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                            <i class="fas fa-image text-gray-400 text-2xl"></i>
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="ml-4 flex-1 flex flex-col">
+                                    <div>
+                                        <div class="flex justify-between text-base font-medium text-gray-900">
+                                            <h3>@item.Name</h3>
+                                            <p class="ml-4">@FormatPrice(item.Price * item.Quantity)</p>
+                                        </div>
+                                        <p class="mt-1 text-sm text-gray-500">Unit Price: @FormatPrice(item.Price)</p>
+                                    </div>
+                                    <div class="flex-1 flex items-end justify-between text-sm">
+                                        <div class="flex items-center">
+                                            <button @onclick="() => UpdateQuantity(item.ProductId, item.Quantity - 1)"
+                                                    class="p-1 text-gray-400 hover:text-gray-500">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <input type="number" 
+                                                   value="@item.Quantity" 
+                                                   @onchange="@(e => UpdateQuantity(item.ProductId, int.Parse(e.Value?.ToString() ?? "1")))"
+                                                   class="mx-2 w-16 text-center border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                                            <button @onclick="() => UpdateQuantity(item.ProductId, item.Quantity + 1)"
+                                                    class="p-1 text-gray-400 hover:text-gray-500">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div class="flex">
+                                            <button @onclick="() => RemoveFromCart(item.ProductId)" 
+                                                    class="font-medium text-indigo-600 hover:text-indigo-500">
+                                                Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-200 px-4 py-6 sm:px-6">
+                <div class="flex justify-between text-base font-medium text-gray-900 mb-4">
+                    <p>Subtotal</p>
+                    <p>@FormatPrice(cartTotal)</p>
+                </div>
+                <p class="mt-0.5 text-sm text-gray-500">Shipping and taxes calculated at checkout.</p>
+                <div class="mt-6 space-y-4">
+                    <button @onclick="Checkout"
+                            class="w-full flex justify-center items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                        Checkout
+                    </button>
+                    <a href="/products"
+                       class="w-full flex justify-center items-center px-6 py-3 border border-gray-300 rounded-md shadow-sm text-base font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        Continue Shopping
+                    </a>
+                    <button @onclick="ClearCart"
+                            class="w-full flex justify-center items-center px-6 py-3 border border-red-300 rounded-md shadow-sm text-base font-medium text-red-700 bg-white hover:bg-red-50">
+                        Clear Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private List<CartItem> cartItems = new();
+    private decimal cartTotal;
+    private Currency? currentCurrency;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentCurrency = await CurrencyService.GetCurrentCurrency();
+            await LoadCart();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadCart()
+    {
+        cartItems = await CartService.GetCartItems();
+        cartTotal = await CartService.GetTotal();
+    }
+
+    private async Task UpdateQuantity(int productId, int quantity)
+    {
+        if (quantity < 1) quantity = 1;
+        
+        try
+        {
+            await CartService.UpdateQuantity(productId, quantity);
+            await LoadCart();
+            ToastService.ShowSuccess("Cart updated successfully");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Failed to update cart");
+        }
+    }
+
+    private async Task RemoveFromCart(int productId)
+    {
+        try
+        {
+            await CartService.RemoveFromCart(productId);
+            await LoadCart();
+            ToastService.ShowSuccess("Item removed from cart");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Failed to remove item from cart");
+        }
+    }
+
+    private async Task ClearCart()
+    {
+        try
+        {
+            await CartService.ClearCart();
+            await LoadCart();
+            ToastService.ShowSuccess("Cart cleared successfully");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("Failed to clear cart");
+        }
+    }
+
+    private void Checkout()
+    {
+        NavigationManager.NavigateTo("/checkout");
+    }
+
+    private string FormatPrice(decimal price)
+    {
+        return CurrencyService.FormatPrice(price, currentCurrency);
+    }
+}
