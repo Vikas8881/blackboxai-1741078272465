@@ -1,0 +1,310 @@
+@page "/checkout"
+@attribute [Authorize]
+@inject ICartService CartService
+@inject ICurrencyService CurrencyService
+@inject IToastService ToastService
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Order Summary -->
+        <div class="lg:col-start-2">
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Order Summary</h3>
+                </div>
+                <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+                    @if (isLoading)
+                    {
+                        <LoadingSpinner IsLoading="true" Message="Loading cart..." />
+                    }
+                    else if (!cartItems.Any())
+                    {
+                        <div class="text-center py-4">
+                            <p class="text-gray-500">Your cart is empty</p>
+                            <a href="/products" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                                Continue Shopping
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="flow-root">
+                            <ul role="list" class="-my-4 divide-y divide-gray-200">
+                                @foreach (var item in cartItems)
+                                {
+                                    <li class="py-4 flex">
+                                        <div class="flex-shrink-0 w-16 h-16 border border-gray-200 rounded-md overflow-hidden">
+                                            @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                            {
+                                                <img src="@item.ImageUrl" alt="@item.Name" class="w-full h-full object-center object-cover">
+                                            }
+                                            else
+                                            {
+                                                <div class="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                    <i class="fas fa-image text-gray-400"></i>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="ml-4 flex-1 flex flex-col">
+                                            <div>
+                                                <div class="flex justify-between text-base font-medium text-gray-900">
+                                                    <h4>@item.Name</h4>
+                                                    <p class="ml-4">@FormatPrice(item.Price * item.Quantity)</p>
+                                                </div>
+                                                <p class="mt-1 text-sm text-gray-500">Qty: @item.Quantity</p>
+                                            </div>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+
+                        <div class="mt-6 border-t border-gray-200 pt-4">
+                            <div class="flex justify-between text-sm">
+                                <p class="text-gray-600">Subtotal</p>
+                                <p class="font-medium text-gray-900">@FormatPrice(cartTotal)</p>
+                            </div>
+                            <div class="flex justify-between text-sm mt-2">
+                                <p class="text-gray-600">Shipping</p>
+                                <p class="font-medium text-gray-900">@FormatPrice(shippingCost)</p>
+                            </div>
+                            <div class="flex justify-between text-sm mt-2">
+                                <p class="text-gray-600">Tax</p>
+                                <p class="font-medium text-gray-900">@FormatPrice(taxAmount)</p>
+                            </div>
+                            <div class="flex justify-between text-base font-medium text-gray-900 mt-4">
+                                <p>Total</p>
+                                <p>@FormatPrice(orderTotal)</p>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Checkout Form -->
+        <div class="lg:col-start-1 lg:row-start-1">
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Shipping Information</h3>
+                </div>
+                <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+                    <EditForm Model="@checkoutModel" OnValidSubmit="HandleCheckout">
+                        <DataAnnotationsValidator />
+
+                        <div class="grid grid-cols-6 gap-6">
+                            <div class="col-span-6 sm:col-span-3">
+                                <label for="firstName" class="block text-sm font-medium text-gray-700">First name</label>
+                                <InputText @bind-Value="checkoutModel.FirstName" 
+                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <ValidationMessage For="@(() => checkoutModel.FirstName)" class="text-red-500 text-sm" />
+                            </div>
+
+                            <div class="col-span-6 sm:col-span-3">
+                                <label for="lastName" class="block text-sm font-medium text-gray-700">Last name</label>
+                                <InputText @bind-Value="checkoutModel.LastName" 
+                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <ValidationMessage For="@(() => checkoutModel.LastName)" class="text-red-500 text-sm" />
+                            </div>
+
+                            <div class="col-span-6">
+                                <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+                                <InputText @bind-Value="checkoutModel.Email" 
+                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <ValidationMessage For="@(() => checkoutModel.Email)" class="text-red-500 text-sm" />
+                            </div>
+
+                            <div class="col-span-6">
+                                <label for="address" class="block text-sm font-medium text-gray-700">Street address</label>
+                                <InputText @bind-Value="checkoutModel.Address" 
+                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <ValidationMessage For="@(() => checkoutModel.Address)" class="text-red-500 text-sm" />
+                            </div>
+
+                            <div class="col-span-6 sm:col-span-6 lg:col-span-2">
+                                <label for="city" class="block text-sm font-medium text-gray-700">City</label>
+                                <InputText @bind-Value="checkoutModel.City" 
+                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <ValidationMessage For="@(() => checkoutModel.City)" class="text-red-500 text-sm" />
+                            </div>
+
+                            <div class="col-span-6 sm:col-span-3 lg:col-span-2">
+                                <label for="state" class="block text-sm font-medium text-gray-700">State</label>
+                                <InputText @bind-Value="checkoutModel.State" 
+                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <ValidationMessage For="@(() => checkoutModel.State)" class="text-red-500 text-sm" />
+                            </div>
+
+                            <div class="col-span-6 sm:col-span-3 lg:col-span-2">
+                                <label for="postalCode" class="block text-sm font-medium text-gray-700">ZIP / Postal code</label>
+                                <InputText @bind-Value="checkoutModel.PostalCode" 
+                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <ValidationMessage For="@(() => checkoutModel.PostalCode)" class="text-red-500 text-sm" />
+                            </div>
+
+                            <div class="col-span-6">
+                                <label for="phone" class="block text-sm font-medium text-gray-700">Phone number</label>
+                                <InputText @bind-Value="checkoutModel.Phone" 
+                                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                                <ValidationMessage For="@(() => checkoutModel.Phone)" class="text-red-500 text-sm" />
+                            </div>
+
+                            <div class="col-span-6">
+                                <label for="paymentMethod" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                <InputSelect @bind-Value="checkoutModel.PaymentMethod" 
+                                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <option value="@PaymentMethod.CashOnDelivery">Cash on Delivery</option>
+                                    <option value="@PaymentMethod.CreditCard">Credit Card</option>
+                                    <option value="@PaymentMethod.PayPal">PayPal</option>
+                                </InputSelect>
+                                <ValidationMessage For="@(() => checkoutModel.PaymentMethod)" class="text-red-500 text-sm" />
+                            </div>
+                        </div>
+
+                        <div class="mt-6">
+                            <button type="submit" 
+                                    disabled="@(isProcessing || !cartItems.Any())"
+                                    class="@(isProcessing || !cartItems.Any() ? "opacity-50 cursor-not-allowed" : "") w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                @if (isProcessing)
+                                {
+                                    <span class="flex items-center">
+                                        <span class="mr-2">Processing...</span>
+                                        <div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span>Place Order</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isLoading = true;
+    private bool isProcessing;
+    private List<CartItem> cartItems = new();
+    private decimal cartTotal;
+    private decimal shippingCost = 10.00m; // Fixed shipping cost for now
+    private decimal taxRate = 0.10m; // 10% tax rate
+    private decimal taxAmount => cartTotal * taxRate;
+    private decimal orderTotal => cartTotal + shippingCost + taxAmount;
+    private Currency? currentCurrency;
+    private CheckoutModel checkoutModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentCurrency = await CurrencyService.GetCurrentCurrency();
+            await LoadCart();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadCart()
+    {
+        cartItems = await CartService.GetCartItems();
+        cartTotal = await CartService.GetTotal();
+    }
+
+    private async Task HandleCheckout()
+    {
+        if (!cartItems.Any())
+        {
+            ToastService.ShowError("Your cart is empty");
+            return;
+        }
+
+        try
+        {
+            isProcessing = true;
+
+            var orderRequest = new OrderRequest
+            {
+                Items = cartItems.Select(item => new OrderItemRequest
+                {
+                    ProductId = item.ProductId,
+                    Quantity = item.Quantity
+                }).ToList(),
+                PaymentMethod = checkoutModel.PaymentMethod,
+                ShippingName = $"{checkoutModel.FirstName} {checkoutModel.LastName}",
+                ShippingAddress = checkoutModel.Address,
+                ShippingCity = checkoutModel.City,
+                ShippingState = checkoutModel.State,
+                ShippingPostalCode = checkoutModel.PostalCode,
+                ShippingPhone = checkoutModel.Phone,
+                ShippingEmail = checkoutModel.Email
+            };
+
+            var response = await Http.PostAsJsonAsync("api/orders", orderRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                var order = await response.Content.ReadFromJsonAsync<Order>();
+                await CartService.ClearCart();
+                ToastService.ShowSuccess("Order placed successfully!");
+                NavigationManager.NavigateTo($"/order-confirmation/{order?.Id}");
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                ToastService.ShowError(error?.Message ?? "Failed to place order");
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError("An unexpected error occurred");
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private string FormatPrice(decimal price)
+    {
+        return CurrencyService.FormatPrice(price, currentCurrency);
+    }
+}
+
+public class CheckoutModel
+{
+    [Required(ErrorMessage = "First name is required")]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Last name is required")]
+    public string LastName { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Email is required")]
+    [EmailAddress(ErrorMessage = "Invalid email address")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Address is required")]
+    public string Address { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "City is required")]
+    public string City { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "State is required")]
+    public string State { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Postal code is required")]
+    public string PostalCode { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Phone number is required")]
+    [Phone(ErrorMessage = "Invalid phone number")]
+    public string Phone { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Payment method is required")]
+    public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.CashOnDelivery;
+}
