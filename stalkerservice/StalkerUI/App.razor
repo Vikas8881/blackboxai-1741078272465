@@ -1,0 +1,67 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <div class="min-h-screen flex items-center justify-center bg-gray-50">
+                            <div class="text-center">
+                                <h1 class="text-4xl font-bold text-red-600 mb-4">Access Denied</h1>
+                                <p class="text-gray-600">You do not have permission to access this resource.</p>
+                                <a href="/" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                                    Return Home
+                                </a>
+                            </div>
+                        </div>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <LoadingSpinner IsLoading="true" Message="Authorizing..." />
+                </Authorizing>
+            </AuthorizeRouteView>
+        </Found>
+        <NotFound>
+            <PageTitle>Not found</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="min-h-screen flex items-center justify-center bg-gray-50">
+                    <div class="text-center">
+                        <h1 class="text-4xl font-bold text-gray-900 mb-4">404</h1>
+                        <p class="text-xl text-gray-600 mb-8">Page not found</p>
+                        <a href="/" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                            Return Home
+                        </a>
+                    </div>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+<Toast @ref="ToastComponent" />
+
+@code {
+    private Toast? ToastComponent;
+
+    [Inject]
+    private IToastService ToastService { get; set; } = null!;
+
+    protected override void OnInitialized()
+    {
+        ToastService.OnShow += ShowToast;
+    }
+
+    private void ShowToast(string message, ToastType type, string? title, int duration)
+    {
+        ToastComponent?.ShowToast(message, type, title, duration);
+    }
+
+    public void Dispose()
+    {
+        ToastService.OnShow -= ShowToast;
+    }
+}
