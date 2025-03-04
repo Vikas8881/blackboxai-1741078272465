@@ -1,0 +1,172 @@
+@inherits LayoutComponentBase
+@inject IJSRuntime JSRuntime
+
+<div class="min-h-screen bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="" class="text-xl font-bold text-indigo-600">Stalker E-Commerce</a>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <NavLink href="" Match="NavLinkMatch.All" 
+                            class="@GetNavLinkClass("border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
+                                              "border-indigo-500 text-gray-900")">
+                            <i class="fas fa-home mr-1"></i> Home
+                        </NavLink>
+                        <NavLink href="products" 
+                            class="@GetNavLinkClass("border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
+                                              "border-indigo-500 text-gray-900")">
+                            <i class="fas fa-box mr-1"></i> Products
+                        </NavLink>
+                        <NavLink href="categories" 
+                            class="@GetNavLinkClass("border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
+                                              "border-indigo-500 text-gray-900")">
+                            <i class="fas fa-tags mr-1"></i> Categories
+                        </NavLink>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <div class="flex items-center space-x-4">
+                        <NavLink href="cart" class="text-gray-500 hover:text-gray-700">
+                            <div class="relative">
+                                <i class="fas fa-shopping-cart text-xl"></i>
+                                @if (CartItemCount > 0)
+                                {
+                                    <span class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                                        @CartItemCount
+                                    </span>
+                                }
+                            </div>
+                        </NavLink>
+                        <div class="relative" @onclick="ToggleUserMenu" @onclick:stopPropagation>
+                            <button class="flex items-center space-x-2 text-gray-500 hover:text-gray-700">
+                                <img src="/images/default-avatar.png" 
+                                     alt="Profile" 
+                                     class="h-8 w-8 rounded-full object-cover"/>
+                                <span>Guest</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            @if (showUserMenu)
+                            {
+                                <div class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                                    <div class="py-1">
+                                        <a href="login" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            <i class="fas fa-sign-in-alt mr-2"></i> Login
+                                        </a>
+                                        <a href="register" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            <i class="fas fa-user-plus mr-2"></i> Register
+                                        </a>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Currency Selector -->
+    <div class="bg-gray-100 py-2">
+        <div class="max-w-7xl mx-auto px-4 flex justify-end items-center space-x-2">
+            <span class="text-sm text-gray-500">Currency:</span>
+            <select @bind="SelectedCurrency" class="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                @foreach (var currency in Currencies)
+                {
+                    <option value="@currency.Code">@currency.Code (@currency.Symbol)</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        @Body
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white shadow-lg mt-8">
+        <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">About Us</h3>
+                    <p class="text-gray-600">
+                        Stalker E-Commerce is your one-stop shop for all your needs. We offer quality products at competitive prices.
+                    </p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="about" class="text-gray-600 hover:text-indigo-600">About Us</a></li>
+                        <li><a href="contact" class="text-gray-600 hover:text-indigo-600">Contact</a></li>
+                        <li><a href="faq" class="text-gray-600 hover:text-indigo-600">FAQ</a></li>
+                        <li><a href="privacy" class="text-gray-600 hover:text-indigo-600">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Customer Service</h3>
+                    <ul class="space-y-2">
+                        <li><a href="shipping" class="text-gray-600 hover:text-indigo-600">Shipping Info</a></li>
+                        <li><a href="returns" class="text-gray-600 hover:text-indigo-600">Returns</a></li>
+                        <li><a href="track-order" class="text-gray-600 hover:text-indigo-600">Track Order</a></li>
+                        <li><a href="support" class="text-gray-600 hover:text-indigo-600">Support</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Connect With Us</h3>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-600 hover:text-indigo-600"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="text-gray-600 hover:text-indigo-600"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-gray-600 hover:text-indigo-600"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="text-gray-600 hover:text-indigo-600"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-gray-200 text-center text-gray-600">
+                <p>&copy; @DateTime.Now.Year Stalker E-Commerce. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private bool showUserMenu;
+    private int CartItemCount => 0; // TODO: Implement cart service
+    private List<Currency> Currencies { get; set; } = new();
+    private string SelectedCurrency { get; set; } = "USD";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // TODO: Load currencies from API
+        Currencies = new List<Currency>
+        {
+            new() { Code = "USD", Symbol = "$" },
+            new() { Code = "EUR", Symbol = "€" },
+            new() { Code = "GBP", Symbol = "£" }
+        };
+    }
+
+    private string GetNavLinkClass(string normal, string active) => 
+        "inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium " + normal;
+
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+    }
+
+    protected override void OnInitialized()
+    {
+        // Close user menu when clicking outside
+        JSRuntime.InvokeVoidAsync("document.addEventListener", "click", () =>
+        {
+            if (showUserMenu)
+            {
+                showUserMenu = false;
+                StateHasChanged();
+            }
+        });
+    }
+}
